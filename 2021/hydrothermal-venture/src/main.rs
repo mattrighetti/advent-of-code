@@ -49,16 +49,20 @@ impl Segment {
             end
         }
     }
+
+    fn get_len(&self) -> i32 {
+        if self.start.0 != self.end.0 {
+            (self.start.0 - self.end.0).abs()
+        } else {
+            (self.start.1 - self.end.1).abs()
+        }
+    }
 }
 
 impl Iterator for Segment {
     type Item = Point;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.end == self.start {
-            return None;
-        }
-
         // Norm vector
         let mut i: i32 = 0;
         let mut j: i32 = 0;
@@ -107,18 +111,12 @@ fn get_overlapping(segments: &Vec<Segment>) -> Vec<Point> {
     let mut set: HashSet<Point> = HashSet::new();
 
     for segment in segments {
-        for point in segment.to_owned().into_iter() {
+        for point in segment.to_owned().into_iter().take((segment.get_len() + 1) as usize) {
             if set.contains(&point) && !values.contains(&point) {
                 values.push(point);
             } else {
                 set.insert(point);
             }
-        }
-
-        if set.contains(&segment.end) && !values.contains(&segment.end) {
-            values.push(segment.end.clone());
-        } else {
-            set.insert(segment.end.clone());
         }
     }
 
@@ -142,12 +140,21 @@ mod test {
     use super::*;
 
     #[test]
+    fn get_len() {
+        let start = Point::new(9, 7);
+        let end = Point::new(9, 9);
+        let segment = Segment::new(start, end);
+        assert_eq!(3, segment.get_len());
+    }
+
+    #[test]
     fn test_segment_iterator() {
         let start = Point::new(9, 7);
         let end = Point::new(9, 9);
-        let mut segment = Segment::new(start, end);
+        let mut segment = Segment::new(start, end).take(3);
         assert_eq!(segment.next(), Some(Point::new(9, 7)));
         assert_eq!(segment.next(), Some(Point::new(9, 8)));
+        assert_eq!(segment.next(), Some(Point::new(9, 9)));
         assert_eq!(segment.next(), None);
     }
     
