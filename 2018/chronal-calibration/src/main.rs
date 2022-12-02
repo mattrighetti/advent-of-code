@@ -23,24 +23,18 @@ fn part1(input: &str) -> Result<()> {
 }
 
 fn part2(input: &str) -> Result<()> {
-    let mut change_list = Vec::new();
-    for line in input.lines() {
-        let change: i32 = line.parse()?;
-        change_list.push(change);
-    }
-
-    let mut i = 0;
     let mut freq = 0;
     let mut frequencies: HashSet<i32> = HashSet::new();
-    loop {
-        freq += change_list[i];
-        if frequencies.contains(&freq) {
-            writeln!(io::stdout(), "{}", freq)?;
-            break;
-        }
-        frequencies.insert(freq);
-        i = (i + 1) % change_list.len();
-    }
 
-    Ok(())
+    loop {
+        for line in input.lines() {
+            let change: i32 = line.parse()?;
+            freq += change;
+            if frequencies.contains(&freq) {
+                writeln!(io::stdout(), "{}", freq)?;
+                return Ok(());
+            }
+            frequencies.insert(freq);
+        }
+    }
 }
