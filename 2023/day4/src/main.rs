@@ -54,17 +54,10 @@ impl Card {
     }
 
     fn points(&self) -> u32 {
-        let mut matching = 0;
-        for w in &self.winning {
-            if self.numbers.contains(w) {
-                matching += 1;
-            }
-        }
-
+        let matching = self.matching();
         if matching == 0 {
             return 0;
         }
-
         1 << (matching - 1)
     }
 }
@@ -76,19 +69,19 @@ fn part1(input: &str) -> io::Result<u32> {
 }
 
 fn part2(input: &str) -> io::Result<u32> {
-    let points: Vec<u32> = input
+    let matches: Vec<u32> = input
         .lines()
         .map(Card::from)
         .map(|x| x.matching())
         .collect();
 
-    let mut cards: Vec<u32> = vec![1; points.len()];
+    let mut cards: Vec<u32> = vec![1; matches.len()];
 
-    for (i, point) in points.iter().enumerate() {
+    for (i, matching) in matches.iter().enumerate() {
         let index = i as u32 + 1;
         let incr = cards[i];
 
-        for l in index..index + point {
+        for l in index..index + matching {
             if let Some(v) = cards.get_mut(l as usize) {
                 *v += incr;
             }
