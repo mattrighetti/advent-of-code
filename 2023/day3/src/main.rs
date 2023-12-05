@@ -1,4 +1,3 @@
-use core::panic;
 use std::{
     collections::HashSet,
     io::{self, Read, Write},
@@ -20,42 +19,16 @@ fn part1(input: &str) -> io::Result<u32> {
         mat.push(line.chars().collect());
     }
 
-    let mut sum = 0;
+    let mut nums = Vec::new();
     for i in 0..mat.len() {
-        let (mut l, mut r) = (0, 0);
-        while l < mat[i].len() {
-            // Position l to next digit char
-            while l < mat[i].len() && !mat[i][l].is_digit(10) {
-                l += 1;
-            }
-
-            if l == mat[i].len() {
-                break;
-            }
-
-            r = l;
-            // Position r to last digit char
-            while r < mat[i].len() - 1 && mat[i][r + 1].is_digit(10) {
-                r += 1;
-            }
-
-            // number is between r and l here
-            let n_string: String = mat[i][l..=r].iter().collect();
-            let n: u32 = n_string.parse().unwrap();
-
-            while l <= r {
-                // check neighboors
-                if has_neighboring_symbol(&mat, i, l) {
-                    sum += n;
-                    l = r + 1;
-                } else {
-                    l += 1;
-                }
+        for j in 0..mat[0].len() {
+            if is_symbol(&mat[i][j]) {
+                nums.extend(neighboring_numbers(&mat, i, j))
             }
         }
     }
 
-    Ok(sum)
+    Ok(nums.iter().sum())
 }
 
 fn part2(input: &str) -> io::Result<u32> {
@@ -75,20 +48,15 @@ fn part2(input: &str) -> io::Result<u32> {
         }
     }
 
-    let sum = ratios_num_coords
-        .iter()
-        .inspect(|pair| println!("{:?}", pair))
-        .map(|(n1, n2)| n1 * n2)
-        .sum();
+    let sum = ratios_num_coords.iter().map(|(n1, n2)| n1 * n2).sum();
 
     Ok(sum)
 }
 
 type Coord = (usize, usize);
 
-fn neighboring_number_pair(matrix: &Vec<Vec<char>>, i: usize, j: usize) -> Option<(u32, u32)> {
+fn neighboring_numbers(matrix: &Vec<Vec<char>>, i: usize, j: usize) -> Vec<u32> {
     let mut num = Vec::new();
-
     let (n, m) = (matrix.len() as i32, matrix[0].len() as i32);
     for (x, y) in get_neighbors_coords(n, m, i as i32, j as i32) {
         if matrix[x][y].is_digit(10) {
@@ -100,23 +68,17 @@ fn neighboring_number_pair(matrix: &Vec<Vec<char>>, i: usize, j: usize) -> Optio
     for coord in num {
         pairs.insert(get_num_at_coord(matrix, &coord));
     }
-    let pairs_vec = Vec::from_iter(pairs.iter());
 
-    match pairs_vec.len() {
-        2 => Some((*pairs_vec[0], *pairs_vec[1])),
-        _ => None,
-    }
+    Vec::from_iter(pairs.into_iter())
 }
 
-fn has_neighboring_symbol(matrix: &Vec<Vec<char>>, i: usize, j: usize) -> bool {
-    let (n, m) = (matrix.len() as i32, matrix[0].len() as i32);
-    for (x, y) in get_neighbors_coords(n, m, i as i32, j as i32) {
-        if is_symbol(&matrix[x][y]) {
-            return true;
-        }
-    }
+fn neighboring_number_pair(matrix: &Vec<Vec<char>>, i: usize, j: usize) -> Option<(u32, u32)> {
+    let pairs_vec = neighboring_numbers(matrix, i, j);
 
-    false
+    match pairs_vec.len() {
+        2 => Some((pairs_vec[0], pairs_vec[1])),
+        _ => None,
+    }
 }
 
 fn get_neighbors_coords(n: i32, m: i32, i: i32, j: i32) -> HashSet<Coord> {
@@ -150,7 +112,7 @@ fn get_num_at_coord(matrix: &Vec<Vec<char>>, coord: &Coord) -> u32 {
         l -= 1;
     }
 
-    while r < matrix[row].len() && matrix[row][r + 1].is_digit(10) {
+    while r < matrix[row].len() - 1 && matrix[row][r + 1].is_digit(10) {
         r += 1;
     }
 
