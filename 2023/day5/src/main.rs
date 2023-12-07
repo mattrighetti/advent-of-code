@@ -69,39 +69,38 @@ fn part2(input: &str) -> io::Result<u64> {
         mappings.push(mapping);
     }
 
+    // repeat step for each map
+    // until we end up with locations
     for range_map in mappings {
-        let mut seed_ranges_map: Vec<(u64, u64)> = Vec::new();
+        // keep track of new mapped ranges
+        let mut next_ranges: Vec<(u64, u64)> = Vec::new();
+
         while let Some((start, end)) = seed_ranges.pop() {
-            let mut ta = Some((start, end));
-            for i in 0..range_map.len() {
-                if let Some((left_overlap, right_overlap)) = overlaps(start, end, &range_map[i]) {
-                    seed_ranges_map.push((
-                        left_overlap - range_map[i].src + range_map[i].dst,
-                        right_overlap - range_map[i].src + range_map[i].dst,
-                    ));
-
-                    if left_overlap > start {
-                        seed_ranges.push((start, left_overlap));
-                    }
-
-                    if right_overlap < end {
-                        seed_ranges.push((right_overlap, end));
-                    }
-
-                    ta = None;
+            match range_map.get_overlapping_ranges(start, end) {
+                (None, _, _) => {
+                    // keep same mapping if there is no overlap
+                    next_ranges.push((start, end));
                 }
-            }
+                (Some(overlapping), lr, rr) => {
+                    next_ranges.push(overlapping);
 
-            if ta.is_some() {
-                seed_ranges_map.push(ta.unwrap());
+                    // these need to be checked in case there is another
+                    // overlap with other ranges maps
+                    if let Some(lr) = lr {
+                        seed_ranges.push(lr);
+                    }
+
+                    if let Some(rr) = rr {
+                        seed_ranges.push(rr);
+                    }
+                }
             }
         }
 
-        seed_ranges = seed_ranges_map.clone();
+        seed_ranges = next_ranges.clone();
     }
 
-    seed_ranges.sort();
-    Ok(seed_ranges[0].0)
+    Ok(seed_ranges.into_iter().map(|x| x.0).min().unwrap())
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -115,6 +114,16 @@ impl Map {
     #[cfg(test)]
     fn new(src: u64, dst: u64, rng: u64) -> Self {
         Map { src, dst, rng }
+    }
+
+    fn overlaps_with(&self, r_start: u64, r_end: u64) -> Option<(u64, u64)> {
+        let left_overlap = cmp::max(r_start, self.src);
+        let right_overlap = cmp::min(r_end, self.src + self.rng);
+
+        match left_overlap < right_overlap {
+            true => Some((left_overlap, right_overlap)),
+            false => None,
+        }
     }
 }
 
@@ -130,6 +139,11 @@ impl From<&str> for Map {
 
 trait IntoRangeMapping {
     fn get_mapped_value(&self, v: &u64) -> u64;
+    fn get_overlapping_ranges(
+        &self,
+        start_range: u64,
+        end_range: u64,
+    ) -> (Option<(u64, u64)>, Option<(u64, u64)>, Option<(u64, u64)>);
 }
 
 impl IntoRangeMapping for Vec<Map> {
@@ -142,15 +156,33 @@ impl IntoRangeMapping for Vec<Map> {
 
         *v
     }
-}
 
-fn overlaps(r_start: u64, r_end: u64, m: &Map) -> Option<(u64, u64)> {
-    let left_overlap = cmp::max(r_start, m.src);
-    let right_overlap = cmp::min(r_end, m.src + m.rng);
+    fn get_overlapping_ranges(
+        &self,
+        start_range: u64,
+        end_range: u64,
+    ) -> (Option<(u64, u64)>, Option<(u64, u64)>, Option<(u64, u64)>) {
+        let mut overlapping = None;
+        let mut left_range = None;
+        let mut right_range = None;
 
-    match left_overlap < right_overlap {
-        true => Some((left_overlap, right_overlap)),
-        false => None,
+        for map in self {
+            if let Some((ol, or)) = map.overlaps_with(start_range, end_range) {
+                overlapping = Some((ol - map.src + map.dst, or - map.src + map.dst));
+
+                if ol > start_range {
+                    left_range = Some((start_range, ol));
+                }
+
+                if or < end_range {
+                    right_range = Some((or, end_range));
+                }
+
+                return (overlapping, left_range, right_range);
+            }
+        }
+
+        (overlapping, left_range, right_range)
     }
 }
 
